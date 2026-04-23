@@ -12,7 +12,6 @@ import java.util.Random;
  */
 @SuppressWarnings("deprecation")
 public class Model extends Observable {
-    private final PuzzleLoader puzzleLoader;
     private final Random random;
     private final List<Puzzle> puzzles;
     private final Deque<Move> moveHistory;
@@ -29,7 +28,6 @@ public class Model extends Observable {
     }
 
     public Model(PuzzleLoader puzzleLoader, Random random) {
-        this.puzzleLoader = puzzleLoader;
         this.random = random;
         this.puzzles = new ArrayList<>(puzzleLoader.loadPuzzles());
         this.moveHistory = new ArrayDeque<>();
@@ -61,7 +59,13 @@ public class Model extends Observable {
     }
 
     public Cell getCell(int row, int column) {
-        return new Cell(row, column, board.getValue(row, column), board.isFixed(row, column), isCellInvalid(row, column));
+        return new Cell(
+                row,
+                column,
+                board.getValue(row, column),
+                board.isFixed(row, column),
+                validationFeedbackEnabled && isCellInvalid(row, column)
+        );
     }
 
     public boolean isEditable(int row, int column) {
@@ -69,13 +73,18 @@ public class Model extends Observable {
     }
 
     public void setCellValue(int row, int column, int value) {
+        validateEditableCell(row, column);
         if (!isEditable(row, column)) {
             throw new IllegalStateException("Pre-filled cells cannot be edited.");
         }
         int previousValue = board.getValue(row, column);
+        if (previousValue == value) {
+            return;
+        }
         board.setValue(row, column, value);
         moveHistory.push(new Move(new Position(row, column), previousValue, value));
         notifyModelChanged();
+        assert board != null;
     }
 
     public void clearCell(int row, int column) {
@@ -184,6 +193,36 @@ public class Model extends Observable {
         return currentPuzzle.getSourceLine();
     }
 
+    public boolean canHint() {
+        return hintEnabled && findHintPosition() != null;
+    }
+
+    public Cell applyHint() {
+        if (!hintEnabled) {
+            throw new IllegalStateException("Hint functionality is disabled.");
+        }
+
+        Position position = findHintPosition();
+        if (position == null) {
+            throw new IllegalStateException("No hint is available.");
+        }
+
+        int row = position.getRow();
+        int column = position.getColumn();
+        int hintValue = currentPuzzle.getSolvedValues()[row][column];
+        setCellValue(row, column, hintValue);
+        return getCell(row, column);
+    }
+
+    public int getSolvedValue(int row, int column) {
+        validatePosition(row, column);
+        return currentPuzzle.getSolvedValues()[row][column];
+    }
+
+    public boolean hasValidationErrors() {
+        return !isBoardValid();
+    }
+
     private boolean hasDuplicateInRow(int row, int column, int value) {
         for (int otherColumn = 0; otherColumn < Board.SIZE; otherColumn++) {
             if (otherColumn != column && board.getValue(row, otherColumn) == value) {
@@ -221,5 +260,26 @@ public class Model extends Observable {
     private void notifyModelChanged() {
         setChanged();
         notifyObservers();
+    }
+
+    private void validatePosition(int row, int column) {
+        if (row < 0 || row >= Board.SIZE || column < 0 || column >= Board.SIZE) {
+            throw new IllegalArgumentException("Row and column must be in the range 0..8.");
+        }
+    }
+
+    private void validateEditableCell(int row, int column) {
+        validatePosition(row, column);
+    }
+
+    private Position findHintPosition() {
+        for (int row = 0; row < Board.SIZE; row++) {
+            for (int column = 0; column < Board.SIZE; column++) {
+                if (isEditable(row, column) && board.getValue(row, column) != getSolvedValue(row, column)) {
+                    return new Position(row, column);
+                }
+            }
+        }
+        return null;
     }
 }

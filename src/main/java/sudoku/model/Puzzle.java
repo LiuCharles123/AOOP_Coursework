@@ -9,10 +9,12 @@ public final class Puzzle {
 
     private final String sourceLine;
     private final int[][] initialValues;
+    private final int[][] solvedValues;
 
-    public Puzzle(String sourceLine, int[][] initialValues) {
+    public Puzzle(String sourceLine, int[][] initialValues, int[][] solvedValues) {
         this.sourceLine = sourceLine;
         this.initialValues = copyGrid(initialValues);
+        this.solvedValues = copyGrid(solvedValues);
     }
 
     public String getSourceLine() {
@@ -21,6 +23,10 @@ public final class Puzzle {
 
     public int[][] getInitialValues() {
         return copyGrid(initialValues);
+    }
+
+    public int[][] getSolvedValues() {
+        return copyGrid(solvedValues);
     }
 
     private int[][] copyGrid(int[][] grid) {
