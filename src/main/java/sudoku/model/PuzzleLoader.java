@@ -11,14 +11,26 @@ import java.util.List;
 
 /**
  * Loads puzzle definitions from a classpath resource.
+ *
+ * <p>Invariant: each loaded puzzle has exactly 81 digits, a 9x9 initial grid, and a solvable
+ * 9x9 solution grid.
  */
 public final class PuzzleLoader {
     private static final String DEFAULT_RESOURCE = "/puzzles.txt";
 
+    /**
+     * Postcondition: returns a non-empty immutable list of valid puzzles loaded from the default
+     * bundled resource.
+     */
     public List<Puzzle> loadPuzzles() {
         return loadPuzzles(DEFAULT_RESOURCE);
     }
 
+    /**
+     * Precondition: resourcePath names a readable classpath resource containing one puzzle per
+     * non-empty line.
+     * Postcondition: returns a non-empty immutable list of valid puzzles parsed from resourcePath.
+     */
     public List<Puzzle> loadPuzzles(String resourcePath) {
         InputStream inputStream = PuzzleLoader.class.getResourceAsStream(resourcePath);
         if (inputStream == null) {
@@ -42,6 +54,7 @@ public final class PuzzleLoader {
         if (puzzles.isEmpty()) {
             throw new IllegalStateException("No puzzles were loaded from: " + resourcePath);
         }
+        assert !puzzles.isEmpty();
         return Collections.unmodifiableList(puzzles);
     }
 
