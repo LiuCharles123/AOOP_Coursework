@@ -11,7 +11,7 @@ public final class GuiMain {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             Model model = new Model();
-            SudokuView view = new SudokuView();
+            SudokuView view = new SudokuView(model);
             new SudokuController(model, view);
             view.setVisible(true);
         });
