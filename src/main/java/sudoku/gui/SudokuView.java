@@ -6,8 +6,11 @@ import sudoku.model.Model;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
@@ -43,6 +46,9 @@ public class SudokuView extends JFrame implements Observer {
     private final JButton hintButton;
     private final JButton resetButton;
     private final JButton newGameButton;
+    private final JCheckBox validationFeedbackCheckBox;
+    private final JCheckBox hintEnabledCheckBox;
+    private final JCheckBox randomSelectionCheckBox;
     private final JLabel statusLabel;
 
     private SudokuController controller;
@@ -61,6 +67,9 @@ public class SudokuView extends JFrame implements Observer {
         this.hintButton = new JButton("Hint");
         this.resetButton = new JButton("Reset");
         this.newGameButton = new JButton("New Game");
+        this.validationFeedbackCheckBox = new JCheckBox("Validation Feedback");
+        this.hintEnabledCheckBox = new JCheckBox("Hints Enabled");
+        this.randomSelectionCheckBox = new JCheckBox("Random Puzzle");
         this.statusLabel = new JLabel("Select a cell to begin.");
 
         buildUi();
@@ -75,6 +84,7 @@ public class SudokuView extends JFrame implements Observer {
         this.controller = controller;
         bindActions();
         refreshBoard();
+        syncFlags();
     }
 
     @Override
@@ -95,6 +105,7 @@ public class SudokuView extends JFrame implements Observer {
                 button.setEnabled(true);
             }
         }
+        syncFlags();
     }
 
     public void showStatus(String message) {
@@ -114,6 +125,30 @@ public class SudokuView extends JFrame implements Observer {
         } else {
             showStatus("Select a cell to begin.");
         }
+    }
+
+    public void syncFlags() {
+        syncCheckBox(validationFeedbackCheckBox, model.isValidationFeedbackEnabled());
+        syncCheckBox(hintEnabledCheckBox, model.isHintEnabled());
+        syncCheckBox(randomSelectionCheckBox, model.isRandomPuzzleSelectionEnabled());
+    }
+
+    public void updateActionAvailability(boolean canEditSelection, boolean canUndo, boolean canHint) {
+        eraseButton.setEnabled(canEditSelection);
+        undoButton.setEnabled(canUndo);
+        hintButton.setEnabled(canHint);
+        for (JButton keypadButton : keypadButtons) {
+            keypadButton.setEnabled(canEditSelection);
+        }
+    }
+
+    public void showCompletionDialog() {
+        JOptionPane.showMessageDialog(
+                this,
+                "Congratulations. The puzzle is correctly completed.",
+                "Puzzle Complete",
+                JOptionPane.INFORMATION_MESSAGE
+        );
     }
 
     private void buildUi() {
@@ -197,6 +232,15 @@ public class SudokuView extends JFrame implements Observer {
             controlsPanel.add(button);
         }
 
+        JPanel flagsPanel = new JPanel(new GridLayout(3, 1, 6, 6));
+        flagsPanel.setBackground(FRAME_BACKGROUND);
+        JCheckBox[] checkBoxes = {validationFeedbackCheckBox, hintEnabledCheckBox, randomSelectionCheckBox};
+        for (JCheckBox checkBox : checkBoxes) {
+            checkBox.setBackground(FRAME_BACKGROUND);
+            checkBox.setFont(new Font("SansSerif", Font.PLAIN, 15));
+            flagsPanel.add(checkBox);
+        }
+
         JPanel topPanel = new JPanel(new BorderLayout(8, 8));
         topPanel.setBackground(FRAME_BACKGROUND);
         topPanel.add(keypadLabel, BorderLayout.NORTH);
@@ -204,6 +248,7 @@ public class SudokuView extends JFrame implements Observer {
 
         sidePanel.add(topPanel, BorderLayout.NORTH);
         sidePanel.add(controlsPanel, BorderLayout.CENTER);
+        sidePanel.add(flagsPanel, BorderLayout.SOUTH);
         return sidePanel;
     }
 
@@ -218,6 +263,15 @@ public class SudokuView extends JFrame implements Observer {
         hintButton.addActionListener(event -> controller.applyHint());
         resetButton.addActionListener(event -> controller.resetPuzzle());
         newGameButton.addActionListener(event -> controller.loadNewGame());
+        validationFeedbackCheckBox.addActionListener(
+                event -> controller.setValidationFeedbackEnabled(validationFeedbackCheckBox.isSelected())
+        );
+        hintEnabledCheckBox.addActionListener(
+                event -> controller.setHintEnabled(hintEnabledCheckBox.isSelected())
+        );
+        randomSelectionCheckBox.addActionListener(
+                event -> controller.setRandomPuzzleSelectionEnabled(randomSelectionCheckBox.isSelected())
+        );
     }
 
     private void installKeyBindings() {
@@ -257,7 +311,7 @@ public class SudokuView extends JFrame implements Observer {
     }
 
     private void bindKey(String name, KeyStroke keyStroke, Runnable action) {
-        getRootPane().getInputMap(JPanel.WHEN_IN_FOCUSED_WINDOW).put(keyStroke, name);
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(keyStroke, name);
         getRootPane().getActionMap().put(name, new javax.swing.AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent event) {
@@ -299,5 +353,11 @@ public class SudokuView extends JFrame implements Observer {
             return INVALID_BACKGROUND;
         }
         return cell.isFixed() ? FIXED_BACKGROUND : EDITABLE_BACKGROUND;
+    }
+
+    private void syncCheckBox(JCheckBox checkBox, boolean selected) {
+        if (checkBox.isSelected() != selected) {
+            checkBox.setSelected(selected);
+        }
     }
 }
